@@ -93,7 +93,7 @@ module Workling
   # memcache-client is searched for. if that isn't found, don't do anything. 
   def self.try_load_a_memcache_client
     begin
-      gem 'fiveruns-memcache-client'
+      gem 'mperham-memcache-client'
       require 'memcache'
     rescue Gem::LoadError
       begin
