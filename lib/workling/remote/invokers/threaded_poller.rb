@@ -25,23 +25,23 @@ module Workling
         def listen
           # Create a thread for each worker.
           Workling::Discovery.discovered.each do |clazz|
-            logger.debug("Discovered listener #{clazz}")
+            # logger.debug("Discovered listener #{clazz}")
             @workers.add(Thread.new(clazz) { |c| clazz_listen(c) })
           end
 
           # Wait for all workers to complete
           @workers.list.each { |t| t.join }
 
-          logger.debug("Reaped listener threads. ")
+          # logger.debug("Reaped listener threads. ")
 
           # Clean up all the connections.
           ActiveRecord::Base.verify_active_connections!
-          logger.debug("Cleaned up connection: out!")
+          # logger.debug("Cleaned up connection: out!")
         end
 
         # Check if all Worker threads have been started.
         def started?
-          logger.debug("checking if started... list size is #{ worker_threads }")
+          # logger.debug("checking if started... list size is #{ worker_threads }")
           Workling::Discovery.discovered.size == worker_threads
         end
 
@@ -52,20 +52,20 @@ module Workling
 
         # Gracefully stop processing
         def stop
-          logger.info("stopping threaded poller...")
+          # logger.info("stopping threaded poller...")
           sleep 1 until started? # give it a chance to start up before shutting down.
-          logger.info("Giving Listener Threads a chance to shut down. This may take a while... ")
+          # logger.info("Giving Listener Threads a chance to shut down. This may take a while... ")
           @workers.list.each { |w| w[:shutdown] = true }
-          logger.info("Listener threads were shut down.  ")
+          # logger.info("Listener threads were shut down.  ")
         end
 
         # Listen for one worker class
         def clazz_listen(clazz)
-          logger.debug("Listener thread #{clazz.name} started")
+          # logger.debug("Listener thread #{clazz.name} started")
           # Setup connection to client (one per thread)
           connection = @client_class.new
           connection.connect
-          logger.info("** Starting client #{ connection.class } for #{clazz.name} queue")
+          # logger.info("** Starting client #{ connection.class } for #{clazz.name} queue")
           # Start dispatching those messages
           while (!Thread.current[:shutdown]) do
             begin
@@ -86,7 +86,7 @@ module Workling
                 @@mutex.synchronize do
                   ActiveRecord::Base.connection.verify!
                   unless ActiveRecord::Base.connection.active?
-                    logger.fatal("Failed - Database not available!")
+                    # logger.fatal("Failed - Database not available!")
                     break
                   end
                 end
@@ -94,19 +94,19 @@ module Workling
 
               # Dispatch and process the messages
               n = dispatch!(connection, clazz)
-              logger.debug("Listener thread #{clazz.name} processed #{n.to_s} queue items") if n > 0
+              # logger.debug("Listener thread #{clazz.name} processed #{n.to_s} queue items") if n > 0
               sleep(self.class.sleep_time) unless n > 0
 
               # If there is a memcache error, hang for a bit to give it a chance to fire up again
               # and reset the connection.
               rescue Workling::WorklingConnectionError
-                logger.warn("Listener thread #{clazz.name} failed to connect. Resetting connection.")
+                # logger.warn("Listener thread #{clazz.name} failed to connect. Resetting connection.")
                 sleep(self.class.reset_time)
                 connection.reset
             end
           end
 
-          logger.debug("Listener thread #{clazz.name} ended")
+          # logger.debug("Listener thread #{clazz.name} ended")
         end
 
         # Dispatcher for one worker class. Will throw MemCacheError if unable to connect.
@@ -120,11 +120,11 @@ module Workling
                 n += 1
                 handler = @routing[queue]
                 method_name = @routing.method_name(queue)
-                logger.debug("Calling #{handler.class.to_s}\##{method_name}(#{result.inspect})")
+                # logger.debug("Calling #{handler.class.to_s}\##{method_name}(#{result.inspect})")
                 handler.dispatch_to_worker_method(method_name, result)
               end
             rescue MemCache::MemCacheError => e
-              logger.error("FAILED to connect with queue #{ queue }: #{ e } }")
+              # logger.error("FAILED to connect with queue #{ queue }: #{ e } }")
               raise e
             end
           end
